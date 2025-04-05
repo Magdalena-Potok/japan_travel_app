@@ -50,13 +50,13 @@ saveRDS(japan_dt, file = "data/japan_dt.RDS")
 # unikalnych wartosci date, a jak mamy duzo panstw, no to sie nie da - wniosek: jak chcemy modelowac, to na tych 
 # danych co da sie zrobic zoo/ts, więc trzeba w apce Rshiny zrobic filtrowanie tego szeregu mniejwiecej tak jak ponizej
 # tylko trzeba dodac filtered_data <- reactive({ japan_dt[country == input$country] }) i potem to zoo i ts
-japan_dt_all
 japan_zoo_all = zoo(japan_dt_all$visitors, japan_dt_all$date)
-japan_ts_all <- ts(japan_zoo_all, start = 1990, end = 2024, frequency = 12)
+japan_ts_all <- ts(japan_zoo_all, start = 1990, frequency = 12)
 saveRDS(japan_ts_all, file = "data/japan_ts_all.RDS")
+length(japan_zoo_all)
+length(japan_ts_all)
+# tutaj jakieś ploty do obczajki
 plot(japan_ts_all)
 plot_ly(japan_dt_all[order(japan_dt_all$date), ], x = ~date, y = ~visitors, type = 'scatter', mode = 'lines')
 
 
-length(japan_zoo_all)
-length(japan_ts_all)

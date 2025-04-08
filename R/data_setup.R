@@ -8,7 +8,7 @@
 # Dane za lata 1990–2023 są ostateczne, natomiast dane za okres styczeń 2024 – grudzień 2024 są tymczasowe (prowizoryczne)
 
 # unknown to miejsce na dane nieprzypisane do konkretnego kraju
-
+library(tidyverse)
 library(readr)
 library(data.table)
 library(zoo)
@@ -16,6 +16,15 @@ library(plotly)
 raw_data <- read_csv("data/raw_data.csv")
 dim(raw_data)
 japan_dt = as.data.table(raw_data)
+
+#sprawdzam jakis funkcje 
+glimpse(japan_dt)
+summary(japan_dt)
+str(japan_dt)
+num_unique_noNA = function(input_vector){
+  sum(!is.na(unique(input_vector)))
+}
+japan_dt[, lapply(.SD, num_unique_noNA)]
 
 # nie będziemy się zajmować growth.rate, jest tam też dużo braków w danych
 colnames(japan_dt)
@@ -25,9 +34,12 @@ japan_dt[, month := substr(month,1,3)]
 japan_dt
 
 japan_dt[, visitors := as.numeric(visitors)]
-
+japan_dt[visitors < 0]
+sum(is.na(japan_dt[,visitors]))
+japan_dt[is.na(japan_dt[,visitors])]
 #usuwanie braków danych
 japan_dt = japan_dt[visitors >= 0]
+sum(is.na(japan_dt[,visitors]))
 # zamiast month i yaer osobno, zrobimy date
 japan_dt[, date := paste(month, year, sep = " ")]
 japan_dt[, date := as.yearmon(date, format = "%b %Y")]

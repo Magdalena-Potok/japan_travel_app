@@ -12,9 +12,13 @@ library(scales)
 # Load data
 japan_dt <- readRDS("data/japan_dt.RDS")
 japan_dt_all <- readRDS("data/japan_dt_all.RDS")
-
+japan_dt[, date := as.Date(date)]
+japan_dt_all[, date := as.Date(date)]
 # Add year and month columns
-japan_dt[, `:=`(year = year(as.Date(date)), month = month(as.Date(date), label = TRUE, abbr = TRUE))]
+japan_dt[, `:=`(
+  year = lubridate::year(as.Date(date)),
+  month = lubridate::month(as.Date(date), label = TRUE, abbr = TRUE)
+)]
 
 # UI
 ui <- fluidPage(
@@ -267,7 +271,9 @@ server <- function(input, output, session) {
   
   output$heatmap_plot <- renderPlotly({
     df <- filtered_data()
-    df[, `:=`(year = year(date), month = month(date, label = TRUE, abbr = FALSE))]
+    df[, `:=`(year = lubridate::year(date),
+              month = lubridate::month(date, label = TRUE, abbr = TRUE)
+    )]
     p <- ggplot(df, aes(x = month, y = factor(year), fill = visitors)) +
       geom_tile() +
       scale_fill_gradient(low = "white", high = "red", labels = comma) +
@@ -278,7 +284,7 @@ server <- function(input, output, session) {
   
   output$boxplot_plot <- renderPlotly({
     df <- filtered_data()
-    df[, month := month(date, label = TRUE, abbr = FALSE)]
+    df[, month := lubridate::month(date, label = TRUE, abbr = FALSE)]
     p <- ggplot(df, aes(x = month, y = visitors)) +
       geom_boxplot(fill = "lightblue") +
       scale_y_continuous(labels = comma) +

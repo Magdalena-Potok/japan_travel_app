@@ -1,0 +1,12 @@
+name: japan_travel_app
+title: japan_travel_app
+username: mpotokk
+account: mpotokk
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 14852066
+bundleId: 10367136
+url: https://mpotokk.shinyapps.io/japan_travel_app/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

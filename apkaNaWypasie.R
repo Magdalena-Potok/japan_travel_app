@@ -371,12 +371,18 @@ server <- function(input, output, session) {
     models$fc_auto <- forecast(models$auto, h = input$horizon_auto)
     models$test_auto <- test_data
     
+    
+
     forecast_df <- data.frame(
       date = seq(as.yearmon(time(models$fc_auto$mean)[1]), by = 1/12, length.out = length(models$fc_auto$mean)),
       forecast = as.numeric(models$fc_auto$mean),
       lower = as.numeric(models$fc_auto$lower[,2]),
       upper = as.numeric(models$fc_auto$upper[,2])
     )
+    
+    full_data$date <- as.yearmon(full_data$date)
+    test_data$date <- as.yearmon(test_data$date)
+    forecast_df$date <- as.yearmon(seq(as.yearmon(time(models$fc_auto$mean)[1]), by = 1/12, length.out = length(models$fc_auto$mean)))
     
     p <- ggplot() +
       geom_line(data = full_data, aes(x = date, y = visitors), color = "black") +
@@ -449,11 +455,14 @@ server <- function(input, output, session) {
     models$test_arima <- test_data
     
     forecast_df <- data.frame(
-      date = seq(as.yearmon(time(models$fc_arima$mean)[1]), by = 1/12, length.out = length(models$fc_arima$mean)),
+      date = as.yearmon(seq(as.yearmon(time(models$fc_arima$mean)[1]), by = 1/12, length.out = length(models$fc_arima$mean))),
       forecast = as.numeric(models$fc_arima$mean),
       lower = as.numeric(models$fc_arima$lower[,2]),
       upper = as.numeric(models$fc_arima$upper[,2])
     )
+    
+    full_data$date <- as.yearmon(full_data$date)
+    test_data$date <- as.yearmon(test_data$date)
     
     p <- ggplot() +
       geom_line(data = full_data, aes(x = date, y = visitors), color = "black") +
@@ -514,11 +523,14 @@ server <- function(input, output, session) {
     models$test_sarima <- test_data
     
     forecast_df <- data.frame(
-      date = seq(as.yearmon(time(models$fc_sarima$mean)[1]), by = 1/12, length.out = length(models$fc_sarima$mean)),
+      date = as.yearmon(seq(as.yearmon(time(models$fc_sarima$mean)[1]), by = 1/12, length.out = length(models$fc_sarima$mean))),
       forecast = as.numeric(models$fc_sarima$mean),
       lower = as.numeric(models$fc_sarima$lower[,2]),
       upper = as.numeric(models$fc_sarima$upper[,2])
     )
+    
+    full_data$date <- as.yearmon(full_data$date)
+    test_data$date <- as.yearmon(test_data$date)
     
     p <- ggplot() +
       geom_line(data = full_data, aes(x = date, y = visitors), color = "black") +

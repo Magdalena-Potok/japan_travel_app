@@ -1,164 +1,3 @@
-library(shiny)
-library(ggplot2)
-library(plotly)
-library(data.table)
-library(lubridate)
-library(forecast)
-library(tseries)
-library(zoo)
-library(shinycssloaders)
-library(scales)
-
-# Load data
-japan_dt <- readRDS("data/japan_dt.RDS")
-japan_dt_all <- readRDS("data/japan_dt_all.RDS")
-japan_dt[, date := as.Date(date)]
-japan_dt_all[, date := as.Date(date)]
-# Add year and month columns
-japan_dt[, `:=`(
-  year = lubridate::year(as.Date(date)),
-  month = lubridate::month(as.Date(date), label = TRUE, abbr = TRUE)
-)]
-
-# UI
-ui <- fluidPage(
-  titlePanel("Tourism Analysis in Japan"),
-  tags$style(HTML(".plot-container { position: relative; margin-bottom: 20px; }")),
-  navbarPage("Data Analysis",
-             
-             tabPanel("Visualization",
-                      sidebarLayout(
-                        sidebarPanel(
-                          sliderInput("year_range", "Year range:",
-                                      min = 1990, max = 2024,
-                                      value = c(1990, 2024), step = 1, sep = ""),
-                          selectInput("country", "Select country:",
-                                      choices = c("All", unique(japan_dt$country)))
-                        ),
-                        mainPanel(
-                          tabsetPanel(id = "plot_tabs",
-                                      tabPanel("Time Series",
-                                               withSpinner(plotlyOutput("ts_plot")),
-                                               div(style = "width: 100%; display: flex; justify-content: center; align-items: center;", 
-                                                   div(style = "width: auto;", tableOutput("summary_table")))
-                                      ),
-                                      tabPanel("Heatmap", withSpinner(plotlyOutput("heatmap_plot"))),
-                                      tabPanel("Boxplot", withSpinner(plotlyOutput("boxplot_plot"))),
-                                      tabPanel("Country Comparison",
-                                               selectizeInput("compare_countries", "Select countries to compare:",
-                                                              choices = unique(japan_dt$country),
-                                                              multiple = TRUE),
-                                               withSpinner(plotlyOutput("compare_plot"))
-                                      )
-                          )
-                        )
-                      )
-             ),
-             
-             tabPanel("Analysis",
-                      sidebarLayout(
-                        sidebarPanel(
-                          sliderInput("year_range_analysis", "Year range:",
-                                      min = 1990, max = 2024,
-                                      value = c(1990, 2024), step = 1, sep = ""),
-                          selectInput("country_analysis", "Select country:",
-                                      choices = c("All", unique(japan_dt$country)))
-                        ),
-                        mainPanel(
-                          tabsetPanel(id = "analysis_tabs",
-                                      tabPanel("ACF", withSpinner(plotOutput("acf_plot"))),
-                                      tabPanel("PACF", withSpinner(plotOutput("pacf_plot"))),
-                                      tabPanel("Decomposition", withSpinner(plotOutput("decompose_plot"))),
-                                      tabPanel("Stationarity Test",
-                                               div(
-                                                   p("The Augmented Dickey-Fuller (ADF) test checks whether a time series is stationary. ",
-                                                     "The null hypothesis (H0) assumes the presence of a unit root (non-stationarity). ",
-                                                     "A small p-value (typically < 0.05) indicates that the series is stationary."),
-                                                   verbatimTextOutput("adf_test"),
-                                                   textOutput("adf_interpretation")
-                                               )
-                                      )
-                                      
-                          )
-                        )
-                      )
-             ),
-             tabPanel("Forecasting",
-                      tabsetPanel(
-                        tabPanel("Auto ARIMA", 
-                                 sidebarLayout(
-                                   sidebarPanel(
-                                     sliderInput("year_range_forecast_auto", "Year range:",
-                                                 min = 1990, max = 2024, value = c(2000, 2018), step = 1, sep = ""),
-                                     selectInput("country_forecast_auto", "Select country:",
-                                                 choices = c("All", unique(japan_dt$country))),
-                                     numericInput("train_end_year_auto", "Training data ends in year:", value = 2017, min = 1990, max = 2023),
-                                     numericInput("horizon_auto", "Forecast horizon (months):", value = 12, min = 1, max = 384)
-                                   ),
-                                   mainPanel(
-                                     withSpinner(plotlyOutput("forecast_plot_auto")),
-                                     div(style = "text-align: center;", h4("Selected parameters by auto.arima: SARIMA(p,d,q)(P,D,Q)[s]")),
-                                     div(style = "width: 100%; display: flex; justify-content: center;",
-                                         div(style = "width: auto;", tableOutput("auto_arima_params"))),
-                                     div(style = "text-align: center;", h4("Forecast model evaluation metrics:")),
-                                     div(style = "width: 100%; display: flex; justify-content: center; align-items: center;", 
-                                         div(style = "width: auto;", tableOutput("metrics_auto"))
-                                     )
-                                   )
-                                 )
-                        ),
-                        tabPanel("ARIMA",
-                                 sidebarLayout(
-                                   sidebarPanel(
-                                     sliderInput("year_range_forecast_arima", "Year range:",
-                                                 min = 1990, max = 2024, value = c(2000, 2018), step = 1, sep = ""),
-                                     selectInput("country_forecast_arima", "Select country:",
-                                                 choices = c("All", unique(japan_dt$country))),
-                                     numericInput("p_arima", "p:", value = 1),
-                                     numericInput("d_arima", "d:", value = 1),
-                                     numericInput("q_arima", "q:", value = 1),
-                                     numericInput("train_end_year_arima", "Training data ends in year:", value = 2017, min = 1990, max = 2023),
-                                     numericInput("horizon_arima", "Forecast horizon (months):", value = 12, min = 1, max = 384)
-                                   ),
-                                   mainPanel(
-                                     withSpinner(plotlyOutput("forecast_plot_arima")),
-                                     div(style = "text-align: center;", h4("Forecast model evaluation metrics:")),
-                                     div(style = "width: 100%; display: flex; justify-content: center; align-items: center;", 
-                                         div(style = "width: auto;", tableOutput("metrics_arima"))
-                                   ))
-                                 )
-                        ),
-                        tabPanel("SARIMA",
-                                 sidebarLayout(
-                                   sidebarPanel(
-                                     sliderInput("year_range_forecast_sarima", "Year range:",
-                                                 min = 1990, max = 2024, value = c(2000, 2018), step = 1, sep = ""),
-                                     selectInput("country_forecast_sarima", "Select country:",
-                                                 choices = c("All", unique(japan_dt$country))),
-                                     numericInput("p_sarima", "p:", value = 1),
-                                     numericInput("d_sarima", "d:", value = 1),
-                                     numericInput("q_sarima", "q:", value = 1),
-                                     numericInput("P_sarima", "P (seasonal):", value = 1),
-                                     numericInput("D_sarima", "D (seasonal):", value = 1),
-                                     numericInput("Q_sarima", "Q (seasonal):", value = 1),
-                                     numericInput("seasonality_sarima", "Seasonality period (s):", value = 12),
-                                     numericInput("train_end_year_sarima", "Training data ends in year:", value = 2017, min = 1990, max = 2023),
-                                     numericInput("horizon_sarima", "Forecast horizon (months):", value = 12, min = 1, max = 384)
-                                   ),
-                                   mainPanel(
-                                     withSpinner(plotlyOutput("forecast_plot_sarima")),
-                                                 div(style = "text-align: center;", h4("Forecast model evaluation metrics:")),
-                                                 div(style = "width: 100%; display: flex; justify-content: center; align-items: center;", 
-                                                     div(style = "width: auto;", tableOutput("metrics_sarima")))
-                                     )
-                                 )
-                        )
-                      )
-             )
-  )
-)
-
-# SERVER
 server <- function(input, output, session) {
   
   models <- reactiveValues()
@@ -203,7 +42,7 @@ server <- function(input, output, session) {
                    year(date) <= input$year_range_forecast_auto[2]]
     
     validate(
-      need(nrow(data) > 0, "Brak danych w wybranym przedziale lat.")
+      need(nrow(data) > 0, "No data available for the selected year range.")
     )
     
     data
@@ -222,7 +61,7 @@ server <- function(input, output, session) {
                    year(date) <= input$year_range_forecast_arima[2]]
     
     validate(
-      need(nrow(data) > 0, "Brak danych w wybranym przedziale lat.")
+      need(nrow(data) > 0, "No data available for the selected year range.")
     )
     
     data
@@ -241,7 +80,7 @@ server <- function(input, output, session) {
                    year(date) <= input$year_range_forecast_sarima[2]]
     
     validate(
-      need(nrow(data) > 0, "Brak danych w wybranym przedziale lat.")
+      need(nrow(data) > 0, "No data available for the selected year range.")
     )
     
     data
@@ -355,14 +194,14 @@ server <- function(input, output, session) {
     }
   })
   
-  output$forecast_plot_auto <- renderPlotly({
+  auto_forecast_data <- eventReactive(input$run_forecast_auto, {
     full_data <- filtered_data_forecast_auto()
     
     train_data <- full_data[year(date) <= input$train_end_year_auto]
     test_data <- full_data[year(date) > input$train_end_year_auto]
     
     validate(
-      need(nrow(train_data) > 2, "Za mało danych treningowych do modelowania.")
+      need(nrow(train_data) > 2, "Not enough training data to model.")
     )
     
     ts_train <- ts(train_data$visitors, start = c(year(min(train_data$date)), month(min(train_data$date))), frequency = 12)
@@ -371,8 +210,6 @@ server <- function(input, output, session) {
     models$fc_auto <- forecast(models$auto, h = input$horizon_auto)
     models$test_auto <- test_data
     
-    
-
     forecast_df <- data.frame(
       date = seq(as.yearmon(time(models$fc_auto$mean)[1]), by = 1/12, length.out = length(models$fc_auto$mean)),
       forecast = as.numeric(models$fc_auto$mean),
@@ -395,6 +232,11 @@ server <- function(input, output, session) {
       theme(legend.position = "none")
     
     ggplotly(p)
+  })
+  
+  output$forecast_plot_auto <- renderPlotly({
+    req(auto_forecast_data())  
+    auto_forecast_data()
   })
   
   output$auto_arima_params <- renderTable({
@@ -438,14 +280,14 @@ server <- function(input, output, session) {
   })
   
   
-  output$forecast_plot_arima <- renderPlotly({
+  arima_forecast_data <- eventReactive(input$run_forecast_arima, {
     full_data <- filtered_data_forecast_arima()
     
     train_data <- full_data[year(date) <= input$train_end_year_arima]
     test_data <- full_data[year(date) > input$train_end_year_arima]
     
     validate(
-      need(nrow(train_data) > 2, "Za mało danych treningowych do modelowania.")
+      need(nrow(train_data) > 2, "Not enough training data to model.")
     )
     
     ts_train <- ts(train_data$visitors, start = c(year(min(train_data$date)), month(min(train_data$date))), frequency = 12)
@@ -477,6 +319,11 @@ server <- function(input, output, session) {
     ggplotly(p)
   })
   
+  output$forecast_plot_arima <- renderPlotly({
+    req(arima_forecast_data())
+    arima_forecast_data()
+  })
+  
   output$metrics_arima <- renderTable({
     req(models$arima, models$fc_arima, models$test_arima)
     
@@ -502,14 +349,14 @@ server <- function(input, output, session) {
   })
   
   
-  output$forecast_plot_sarima <- renderPlotly({
+  sarima_forecast_data <- eventReactive(input$run_forecast_sarima, {
     full_data <- filtered_data_forecast_sarima()
     
     train_data <- full_data[year(date) <= input$train_end_year_sarima]
     test_data <- full_data[year(date) > input$train_end_year_sarima]
     
     validate(
-      need(nrow(train_data) > 2, "Za mało danych treningowych do modelowania.")
+      need(nrow(train_data) > 2, "Not enough training data to model.")
     )
     
     ts_train <- ts(train_data$visitors, start = c(year(min(train_data$date)), month(min(train_data$date))), frequency = 12)
@@ -545,6 +392,11 @@ server <- function(input, output, session) {
     ggplotly(p)
   })
   
+  output$forecast_plot_sarima <- renderPlotly({
+    req(sarima_forecast_data())
+    sarima_forecast_data()
+  })
+  
   output$metrics_sarima <- renderTable({
     req(models$sarima, models$fc_sarima, models$test_sarima)
     
@@ -571,6 +423,3 @@ server <- function(input, output, session) {
   
   
 }
-
-# Run the app
-shinyApp(ui, server)

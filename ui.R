@@ -1,8 +1,6 @@
 ui <- fluidPage(
   titlePanel("Tourism Analysis in Japan"),
-  tags$style(HTML(".plot-container { position: relative; margin-bottom: 20px; }")),
   navbarPage("Data Analysis",
-             
              tabPanel("Visualization",
                       sidebarLayout(
                         sidebarPanel(

@@ -5,7 +5,7 @@ account: mpotokk
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 14852066
-bundleId: 10419741
+bundleId: 10450257
 url: https://mpotokk.shinyapps.io/japan_travel_app/
 version: 1
 asMultiple: FALSE
